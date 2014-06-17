@@ -4,21 +4,26 @@ Title: Family Preservation Impact Estimation Preparation
 Program: s14a_FamilyPres_ImpactPrep_2014_06_02_sb.sas
 Programmer: Scott Brown
 Created Date: 5/6/2014
-Last Updated: 6/11/2014
+Last Updated: 6/17/2014
 
-Input Datasets: fpres.s14_fam_preservation_vand_140504.sas7bdat (NOTE: Sent by Danny Gubits on 5/5/2014)
-				fbase.s01_base_vand_140117.sas7bdat
-				fam18m.s02_18mo_vand_140211
-				fdrop.s16_hfbase_flag_25ineligible_fam
+Input Datasets: 
+	fpres.s14_fam_preservation_vand_140504.sas7bdat (NOTE: Sent by Danny Gubits on 5/5/2014)
+	fbase.s01_base_vand_140117.sas7bdat
+	fam18m.s02_18mo_vand_140211
+	fdrop.s16_hfbase_flag_25ineligible_fam
 
 Key Output Dataset: s14_fam_pres_impacts_vand_140510_sb
-Intermediate Dataset: s14_fampres_temp (individual level, with analysis variables)
+
+Intermediate Datasets: 
+	s14_fampres_temp (individual level, with analysis variables)
+	fpres.s14_fampres_ind_140617_jmr (s14_fampres_temp, merged with household outcomes)
 
 Purpose: Prepare family-level data file for family preservation impact estimates
 1) Do initial programming to create analysis variables
 2) Calculate total partner/spouse and child separations + reunifications + placements in foster care
 3) Merge calculations with select adult survey baseline data to get covariates
 4) Calculate dummy variables for outcome variables (e.g., number of child separations -> any child separations)
+5) Merge household outcomes dataset with individual-level dataset
 
 */
 
@@ -86,14 +91,14 @@ DATA fpres.s14_fampres_temp;
 
 	*Any separation (JMR);
 	IF f18_notwith=1 OR f18_seplast6=1 THEN f18_any_sep=1;
-		ELSE if f18_notwith=0 AND f18_seplast6=0 THEN any_sep=0;
+		ELSE if f18_notwith=0 AND f18_seplast6=0 THEN f18_any_sep=0;
 
-	*foster care placements: now and within last 6 months;
+	*foster care placements: now and within last 6 months (JMR);
 	IF b_age in(0:15) THEN DO;
 		IF f18_d6b_rc in(2,4,6) THEN f18_foster_nw=1; ELSE IF f18_notwith=1 THEN f18_foster_nw=0;
 		IF f18_d18b_rc in(2,4,6) THEN f18_foster_last6=1; ELSE IF f18_with=1 THEN f18_foster_last6=0;
-		IF f18_foster_nw=1 OR f18_foster_last6=1 THEN any_foster=1;
-			ELSE IF (f18_foster_nw=0 AND f18_foster_last6=.) OR (f18_foster_nw=. AND f18_foster_last6=0) THEN any_foster=0;
+		IF f18_foster_nw=1 OR f18_foster_last6=1 THEN f18_any_foster=1;
+			ELSE IF (f18_foster_nw=0 AND f18_foster_last6=.) OR (f18_foster_nw=. AND f18_foster_last6=0) THEN f18_any_foster=0;
 	END;
 
 	*relationship status dummy variables;
@@ -151,17 +156,17 @@ DATA fpres.s14_fampres_temp;
 
 	/*D. Create individual-level analysis bases (JMR)*/
 	*Spouse/partner separations;
-	IF b_present=1 AND b_relat in(1,2) THEN valid_any_spoupart_sep=1;
-		ELSE valid_any_spoupart_sep=0;
+	IF b_present=1 AND b_relat in(1,2) THEN validInd_any_spoupart_sep=1;
+		ELSE validInd_any_spoupart_sep=0;
 	*Child separations and foster care placements;
-	IF b_present=1 AND b_relat in(3,4,14) AND b_age in(0:15) THEN DO; valid_any_child_sep=1; valid_any_foster=1; END;
-		ELSE DO; valid_any_child_sep=0; valid_any_foster=0; END;
+	IF b_present=1 AND b_relat in(3,4,14) AND b_age in(0:15) THEN DO; validInd_any_child_sep=1; validInd_any_foster=1; END;
+		ELSE DO; validInd_any_child_sep=0; validInd_any_foster=0; END;
 	*Spouse/partner reunifications;
-	IF b_present=0 AND b_relat in(1,2) THEN valid_any_spoupart_reunif=1;
-		ELSE valid_any_spoupart_reunif=0;
+	IF b_present=0 AND b_relat in(1,2) THEN validInd_any_spoupart_reunif=1;
+		ELSE validInd_any_spoupart_reunif=0;
 	*Child reunifications;
-	IF b_present=0 AND b_relat in(3,4,14) AND b_age in(0:15) THEN valid_any_child_reunif=1;
-		ELSE valid_any_child_reunif=0;
+	IF b_present=0 AND b_relat in(3,4,14) AND b_age in(0:15) THEN validInd_any_child_reunif=1;
+		ELSE validInd_any_child_reunif=0;
 
 RUN;
 
@@ -333,82 +338,110 @@ DATA fpres.s14_fam_pres_impacts_140506_sb (DROP=CBRR_Avail PBTH_Avail SUB_Avail)
 	/*Create analysis bases for each outcome measure*/
 	
 	*1. Spouse/Partner separations analysis base;
-	IF outcome_any_spoupart_sep~=. THEN valid_any_spoupart_sep=1;
+	IF outcome_any_spoupart_sep~=. THEN validFam_any_spoupart_sep=1;
 		/*Missing: 2 families with missing follow-up data for B1A*/
-		ELSE IF id_fam_vand in(2066,2281) THEN valid_any_spoupart_sep=1;
+		ELSE IF id_fam_vand in(2066,2281) THEN validFam_any_spoupart_sep=1;
 		/*NA: did not report a spouse or partner with them at baseline or did not complete family roster at baseline */
-		ELSE valid_any_spoupart_sep=0;
+		ELSE validFam_any_spoupart_sep=0;
 	
 	*2. Child separations analysis base;
-	IF outcome_any_child_sep~=. THEN valid_any_child_sep=1;
+	IF outcome_any_child_sep~=. THEN validFam_any_child_sep=1;
 		/*Missing: five families with missing follow-up data for B1A or whether children separated in past 6 months*/
-		ELSE IF id_fam_vand in(1939, 2179, 1318, 2100, 2575) THEN valid_any_child_sep=1;
+		ELSE IF id_fam_vand in(1939, 2179, 1318, 2100, 2575) THEN validFam_any_child_sep=1;
 		/*NA: did not have any children meeting age/relationship status criteria or did not complete family roster at baseline*/
-		ELSE valid_any_child_sep=0;
+		ELSE validFam_any_child_sep=0;
 
 	*3. Foster care analysis base;
-	IF outcome_any_foster~=. THEN valid_any_foster=1;
+	IF outcome_any_foster~=. THEN validFam_any_foster=1;
 		/*Missing: 4 families with missing follow-up data for B1A*/
-		ELSE IF id_fam_vand in(1939) THEN valid_any_foster=1;
+		ELSE IF id_fam_vand in(1939) THEN validFam_any_foster=1;
 		/*NA: did not have any children meeting age/relationship status criteria or did not complete family roster at baseline*/
-		ELSE valid_any_foster=0;
+		ELSE validFam_any_foster=0;
 
 	*4. Spouse/Partner reunifications analysis base;
-	IF outcome_any_spoupart_reunif~=. THEN valid_any_spoupart_reunif=1;
+	IF outcome_any_spoupart_reunif~=. THEN validFam_any_spoupart_reunif=1;
 		/*Missing: 3 families with missing follow-up data for B1A*/
-		ELSE IF id_fam_vand in(1461, 2025, 3018) THEN valid_any_spoupart_reunif=1;
+		ELSE IF id_fam_vand in(1461, 2025, 3018) THEN validFam_any_spoupart_reunif=1;
 		/*NA: did not report a spouse or partner as not being with them at baseline or did not complete family roster at baseline */
-		ELSE valid_any_spoupart_reunif=0;
+		ELSE validFam_any_spoupart_reunif=0;
 	
 	*5. Child reunifications analysis base;
-	IF outcome_any_child_reunif~=. THEN valid_any_child_reunif=1;
+	IF outcome_any_child_reunif~=. THEN validFam_any_child_reunif=1;
 		/*Missing: 5 families with missing follow-up data for B1A for all children not with household at baseline*/
-		ELSE IF id_fam_vand in(1254, 1303, 1461, 1505, 1572) THEN valid_any_child_reunif=1;
+		ELSE IF id_fam_vand in(1254, 1303, 1461, 1505, 1572) THEN validFam_any_child_reunif=1;
 		/*NA: did not have any children separated at baseline or did not have any that met age/relationship status criteria. Alternately, did not complete family roster at baseline*/
-		ELSE valid_any_child_reunif=0;
+		ELSE validFam_any_child_reunif=0;
 
-*Attach labels;
-LABEL
-id_fam_vand = 'Unique de-identified household ID' 
-AgeatRA = 'Age of respondent as of random assignment date' 
-GENDER = 'Gender of respondent' 
-RACE_cat = 'Respondent race, categorical' 
-RA_Result = 'Random assignment intervention selection' 
-site_id = 'Study site ID' 
-tot_sep_spoupart_nw = 'Total number of spouses or partners with family at baseline and not with family at 18 months (separations)' 
-tot_sep_spoupart_last6 = 'Total number of spouses or partners with family at baseline and at 18 months who were not with the family at some time within the past 6 months (separations)' 
-n_spoupart_bpres = 'Count of total spouse or partners with family at baseline' 
-tot_sep_child_nw = 'Total number of children with family at baseline and not with family at 18 months (separations)' 
-tot_sep_child_last6 = 'Total number of children with family at baseline and at 18 months who were not with the family at some time within the past 6 months (separations)' 
-n_child_bpres = 'Count of children with family at baseline' 
-tot_foster_nw = 'Total number of children not with the family at 18 months who are in foster care' 
-tot_foster_last6 = 'Total number of children with family at 18 months who were in foster care at some time within the past 6 months' 
-n_tot_child = 'Count of children with and not with family at baseline' 
-tot_reunif_spoupart = 'Total number of spouses or partners not with family at baseline and with family at 18 months (reunifications)' 
-n_spoupart_bsep = 'Count of total spouse or partners not with family at baseline' 
-tot_reunif_child = 'Total number of children not with family at baseline and with family at 18 months (reunifications)' 
-n_child_bsep = 'Count of children not with family at baseline' 
-age_oldest_childwith = 'Age of oldest child under 16 at baseline' 
-pair_CBRR_PBTH = 'Respondent had both CBRR and PBTH available at random assignment' 
-pair_CBRR_SUB = 'Respondent had both CBRR and SUB available at random assignment' 
-pair_SUB_PBTH = 'Respondent had both SUB  and PBTH available at random assignment' 
-pair_CBRR_UC = 'Respondent had both CBRR and UC available at random assignment' 
-pair_PBTH_UC = 'Respondent had both PBTH and UC available at random assignment' 
-pair_SUB_UC = 'Respondent had both SUB and UC available at random assignment' 
-ra_SUB = 'Respondent was randomly assigned to SUB' 
-ra_PBTH = 'Respondent was randomly assigned to PBTH' 
-ra_CBRR = 'Respondent was randomly assigned to CBRR' 
-ra_UC = 'Respondent was randomly assigned to UC' 
-outcome_any_spoupart_sep = 'Was any spouse or partner with the family at baseline separated from the family within the past 6 months?' 
-outcome_any_child_sep = 'Were any children with the family at baseline separated from the family within the past 6 months?' 
-outcome_any_foster = 'Were any children living in foster care within the past 6 months?' 
-outcome_any_spoupart_reunif = 'Was any spouse or partner not with the family at baseline with the family at the 18-month follow-up survey?' 
-outcome_any_child_reunif = 'Were any children not with the family at baseline with the family at the 18-month follow-up survey?' 
-valid_any_spoupart_sep = 'Is the family in the analysis base for the spouse or partner separations analysis?' 
-valid_any_child_sep = 'Is the family in the analysis base for the child separations analysis?' 
-valid_any_foster = 'Is the family in the analysis base for the foster care analysis?' 
-valid_any_spoupart_reunif = 'Is the family in the analysis base for the spouse or partner reunification analysis?' 
-valid_any_child_reunif = 'Is the family in the analysis base for the child reunification analysis?' 
-;
+	*Attach labels;
+	LABEL
+	id_fam_vand = 'Unique de-identified household ID' 
+	AgeatRA = 'Age of respondent as of random assignment date' 
+	GENDER = 'Gender of respondent' 
+	RACE_cat = 'Respondent race, categorical' 
+	RA_Result = 'Random assignment intervention selection' 
+	site_id = 'Study site ID' 
+	tot_sep_spoupart_nw = 'Total number of spouses or partners with family at baseline and not with family at 18 months (separations)' 
+	tot_sep_spoupart_last6 = 'Total number of spouses or partners with family at baseline and at 18 months who were not with the family at some time within the past 6 months (separations)' 
+	n_spoupart_bpres = 'Count of total spouse or partners with family at baseline' 
+	tot_sep_child_nw = 'Total number of children with family at baseline and not with family at 18 months (separations)' 
+	tot_sep_child_last6 = 'Total number of children with family at baseline and at 18 months who were not with the family at some time within the past 6 months (separations)' 
+	n_child_bpres = 'Count of children with family at baseline' 
+	tot_foster_nw = 'Total number of children not with the family at 18 months who are in foster care' 
+	tot_foster_last6 = 'Total number of children with family at 18 months who were in foster care at some time within the past 6 months' 
+	n_tot_child = 'Count of children with and not with family at baseline' 
+	tot_reunif_spoupart = 'Total number of spouses or partners not with family at baseline and with family at 18 months (reunifications)' 
+	n_spoupart_bsep = 'Count of total spouse or partners not with family at baseline' 
+	tot_reunif_child = 'Total number of children not with family at baseline and with family at 18 months (reunifications)' 
+	n_child_bsep = 'Count of children not with family at baseline' 
+	age_oldest_childwith = 'Age of oldest child under 16 at baseline' 
+	pair_CBRR_PBTH = 'Respondent had both CBRR and PBTH available at random assignment' 
+	pair_CBRR_SUB = 'Respondent had both CBRR and SUB available at random assignment' 
+	pair_SUB_PBTH = 'Respondent had both SUB  and PBTH available at random assignment' 
+	pair_CBRR_UC = 'Respondent had both CBRR and UC available at random assignment' 
+	pair_PBTH_UC = 'Respondent had both PBTH and UC available at random assignment' 
+	pair_SUB_UC = 'Respondent had both SUB and UC available at random assignment' 
+	ra_SUB = 'Respondent was randomly assigned to SUB' 
+	ra_PBTH = 'Respondent was randomly assigned to PBTH' 
+	ra_CBRR = 'Respondent was randomly assigned to CBRR' 
+	ra_UC = 'Respondent was randomly assigned to UC' 
+	outcome_any_spoupart_sep = 'Was any spouse or partner with the family at baseline separated from the family within the past 6 months?' 
+	outcome_any_child_sep = 'Were any children with the family at baseline separated from the family within the past 6 months?' 
+	outcome_any_foster = 'Were any children living in foster care within the past 6 months?' 
+	outcome_any_spoupart_reunif = 'Was any spouse or partner not with the family at baseline with the family at the 18-month follow-up survey?' 
+	outcome_any_child_reunif = 'Were any children not with the family at baseline with the family at the 18-month follow-up survey?' 
+	validFam_any_spoupart_sep = 'Is the family in the analysis base for the spouse or partner separations analysis?' 
+	validFam_any_child_sep = 'Is the family in the analysis base for the child separations analysis?' 
+	validFam_any_foster = 'Is the family in the analysis base for the foster care analysis?' 
+	validFam_any_spoupart_reunif = 'Is the family in the analysis base for the spouse or partner reunification analysis?' 
+	validFam_any_child_reunif = 'Is the family in the analysis base for the child reunification analysis?' 
+	;
 
 RUN;
+
+/*Part 5: Merge outcomes data with individual-level data (JMR) */
+PROC SORT data=fpres.s14_fam_pres_impacts_140506_sb;
+	BY id_fam_vand;
+PROC SORT data=fpres.s14_fampres_temp;
+	BY id_fam_vand;
+DATA fpres.s14_fampres_ind_140617_jmr;
+	MERGE fpres.s14_fam_pres_impacts_140506_sb fpres.s14_fampres_temp;
+	BY id_fam_vand;
+RUN;
+
+
+/*
+*Frequencies indicating bases (note: excludes 20 families from the set of 
+  25 families that should have been ineligible at baseline (the other 5 did not complete 
+   an 18 month follow-up survey);
+PROC FREQ DATA=fpres.s14_fam_pres_impacts_140506_sb;
+	TABLES outcome_any_spoupart_sep*valid_any_spoupart_sep /missing norow nocol nopercent;
+	TABLES outcome_any_child_sep*valid_any_child_sep /missing norow nocol nopercent;
+	TABLES outcome_any_foster*valid_any_foster /missing norow nocol nopercent;
+	TABLES outcome_any_spoupart_reunif*valid_any_spoupart_reunif /missing norow nocol nopercent;
+	TABLES outcome_any_child_reunif*valid_any_child_reunif /missing norow nocol nopercent;
+RUN;
+*/
+
+
+*END PROGRAM;
+
