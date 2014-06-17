@@ -1,4 +1,5 @@
 family-options
 ==============
 
-Family Options Study
+Description: This repository contains code and reference for Family Options Study analysis.
+Programmers: Scott Brown (Vanderbilt U.), Jason Rodriguez (Vanderbilt U.)
