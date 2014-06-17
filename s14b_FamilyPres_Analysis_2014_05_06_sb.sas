@@ -4,9 +4,11 @@ Title: Family Preservation Analysis Program
 Program: s14b_FamilyPres_Analysis_2014_05_06_sb.sas
 Programmer: Scott Brown
 Created Date: 5/7/2014
-Last Updated: 5/7/2014
+Last Updated: 6/17/2014
 
-Input Datasets: s14_fam_pres_impacts_vand_140510_sb
+Input Datasets: 
+	s14_fam_pres_impacts_vand_140510_sb
+	fpres.s14_fampres_ind_140617_jmr
 
 Output Dataset: 
 
@@ -118,3 +120,189 @@ RUN;
 
 
 ODS RTF CLOSE;
+
+
+
+/*INDIVIDUAL OUTCOMES (JMR) */
+ODS RTF FILE="E:\Family Options\Output\Exploratory\FamPres Individual Descriptive Stats_140617_jmr.doc";
+
+/*Distribution of validInd variables */
+PROC FREQ DATA=fpres.s14_fampres_ind_140617_jmr;
+	TITLE "Distribution of validInd variables ";
+	* By site_id;
+	TABLES 	validInd_any_spoupart_sep*site_id
+			validInd_any_child_sep*site_id
+			validInd_any_foster*site_id
+			validInd_any_spoupart_reunif*site_id
+			validInd_any_child_reunif*site_id
+			/norow nopercent;
+	* By RA_Result;
+	TABLES 	validInd_any_spoupart_sep*RA_Result
+			validInd_any_child_sep*RA_Result
+			validInd_any_foster*RA_Result
+			validInd_any_spoupart_reunif*RA_Result
+			validInd_any_child_reunif*RA_Result
+			/norow nopercent chisq;
+RUN;
+
+/*Frequencies of individual-level outcomes */
+PROC FREQ DATA=fpres.s14_fampres_ind_140617_jmr;
+	TITLE "Frequencies of individual-level outcome";
+	TABLES 	f18_any_sep*validInd_any_spoupart_sep
+			f18_any_sep*validInd_any_child_sep
+			f18_any_foster*validInd_any_foster 
+			f18_with*validInd_any_spoupart_reunif 
+			f18_with*validInd_any_child_reunif
+			/missing norow nopercent;
+RUN;
+
+/*Descriptive statistics on spouse/partner separations */
+PROC FREQ DATA=fpres.s14_fampres_ind_140617_jmr;
+	TITLE "Descriptive statistics on spouse/partner separations";
+	*By individual characteristics;
+	TABLES 	f18_any_sep*b_sex 
+			f18_any_sep*b_felony 
+			f18_any_sep*b_work_for_pay 
+			f18_any_sep*b_work_disab 
+			/norow nopercent chisq;
+	*By household characteristics;
+	TABLES	f18_any_sep*Gender
+			f18_any_sep*Race_cat
+			f18_any_sep*RA_Result
+			f18_any_sep*site_id
+			/norow nopercent chisq;
+	WHERE validInd_any_spoupart_sep=1;
+RUN;
+
+PROC SORT DATA=fpres.s14_fampres_ind_140617_jmr;
+	BY f18_any_sep;
+PROC MEANS DATA=fpres.s14_fampres_ind_140617_jmr n mean std;
+	TITLE "Descriptive statistics on spouse/partner separations";
+	VAR b_age
+		f18_d17_weeks
+		AgeatRA
+		;
+	BY f18_any_sep;
+	WHERE validInd_any_spoupart_sep=1;
+RUN;
+
+/*Descriptive statistics on child separations */
+PROC FREQ DATA=fpres.s14_fampres_ind_140617_jmr;
+	TITLE "Descriptive statistics on child separations";
+	*By individual characteristics;
+	TABLES 	f18_any_sep*b_sex 
+			f18_any_sep*b_otherpar_present
+			f18_any_sep*b_past_separtn
+			/nopercent norow chisq;
+	*By household characteristis;
+	TABLES	f18_any_sep*Gender
+			f18_any_sep*Race_cat
+			f18_any_sep*RA_Result
+			f18_any_sep*site_id
+			/norow nopercent chisq;
+	WHERE validInd_any_child_sep=1;
+RUN;
+
+PROC SORT DATA=fpres.s14_fampres_ind_140617_jmr;
+	BY f18_any_sep;
+PROC MEANS DATA=fpres.s14_fampres_ind_140617_jmr n mean std;
+	TITLE "Descriptive statistics on child separations";
+	VAR b_age
+		f18_d17_weeks
+		AgeatRA
+		;
+	BY f18_any_sep;
+	WHERE validInd_any_child_sep=1;
+RUN;
+
+/*Descriptive statistics on foster care placements */
+PROC FREQ DATA=fpres.s14_fampres_ind_140617_jmr;
+	TITLE "Descriptive statistics on foster care placements";
+	*By individual characteristics;
+	TABLES 	f18_any_foster*b_sex 
+			f18_any_foster*b_otherpar_present
+			f18_any_foster*b_past_separtn
+			/nopercent norow chisq;
+	*By household characteristis;
+	TABLES	f18_any_foster*Gender
+			f18_any_foster*Race_cat
+			f18_any_foster*RA_Result
+			f18_any_foster*site_id
+			/norow nopercent chisq;
+	WHERE validInd_any_foster=1;
+RUN;
+
+PROC SORT DATA=fpres.s14_fampres_ind_140617_jmr;
+	BY f18_any_foster;
+PROC MEANS DATA=fpres.s14_fampres_ind_140617_jmr n mean std;
+	TITLE "Descriptive statistics on foster care placements";
+	VAR b_age
+		f18_d17_weeks
+		AgeatRA
+		;
+	BY f18_any_foster;
+	WHERE validInd_any_foster=1;
+RUN;
+
+/*Descriptive statistics on spouse/partner reunifications */
+PROC FREQ DATA=fpres.s14_fampres_ind_140617_jmr;
+	TITLE "Descriptive statistics on spouse/partner reunifications";
+	*By individual characteristics;
+	TABLES 	f18_with*b_sex 
+			f18_with*b_felony 
+			f18_with*b_work_for_pay 
+			f18_with*b_work_disab 
+			/norow nopercent chisq;
+	*By household characteristics;
+	TABLES	f18_with*Gender
+			f18_with*Race_cat
+			f18_with*RA_Result
+			f18_with*site_id
+			/norow nopercent chisq;
+	WHERE validInd_any_spoupart_reunif=1;
+RUN;
+
+PROC SORT DATA=fpres.s14_fampres_ind_140617_jmr;
+	BY f18_with;
+PROC MEANS DATA=fpres.s14_fampres_ind_140617_jmr n mean std;
+	TITLE "Descriptive statistics on spouse/partner reunifications";
+	VAR b_age
+		f18_d17_weeks
+		AgeatRA
+		;
+	BY f18_with;
+	WHERE validInd_any_spoupart_reunif=1;
+RUN;
+
+/*Descriptive statistics on child reunifications */
+PROC FREQ DATA=fpres.s14_fampres_ind_140617_jmr;
+	TITLE "Descriptive statitics on child reunifications";
+	*By individual characteristics;
+	TABLES 	f18_with*b_sex 
+			f18_with*b_otherpar_present
+			f18_with*b_past_separtn
+			/nopercent norow chisq;
+	*By household characteristis;
+	TABLES	f18_with*Gender
+			f18_with*Race_cat
+			f18_with*RA_Result
+			f18_with*site_id
+			/norow nopercent chisq;
+	WHERE validInd_any_child_reunif=1;
+RUN;
+
+PROC SORT DATA=fpres.s14_fampres_ind_140617_jmr;
+	BY f18_with;
+PROC MEANS DATA=fpres.s14_fampres_ind_140617_jmr n mean std;
+	TITLE "Descriptive statitics on child reunifications";
+	VAR b_age
+		f18_d17_weeks
+		AgeatRA
+		;
+	BY f18_with;
+	WHERE validInd_any_child_reunif=1;
+RUN;
+
+ODS RTF CLOSE;
+
+
