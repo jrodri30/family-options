@@ -7,7 +7,6 @@ Input datasets:
 Output datasets:
 Output files:
 
-This is scott's update
 
 */
 
